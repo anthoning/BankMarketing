@@ -1,0 +1,182 @@
+#Package Importing
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+import seaborn as sns
+from sklearn import preprocessing, model_selection, metrics
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression 
+import warnings
+warnings.filterwarnings('ignore')
+
+#Dataset Importing
+bank = pd.read_csv("/Users/di/Desktop/UTD/sem4/Applied Machine Learning/Project 2/Bank_Full.csv")
+bank_df = pd.DataFrame(bank)
+
+#categorical -numerical
+from sklearn.preprocessing import LabelEncoder
+
+categorical_column = ['job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'month',
+                      'day', 'poutcome','y']
+
+for i in categorical_column:
+    le = LabelEncoder()
+    bank_df[i] = le.fit_transform(bank_df[i])
+
+
+#Feature and Target
+y = bank_df.iloc[:, -1].values
+x = bank_df.drop(['y'],axis=1)
+
+#Dataset Seperating
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(x, y, test_size = 0.3, random_state = 0)
+
+from sklearn.preprocessing import StandardScaler
+sc_X = StandardScaler()
+X_train = sc_X.fit_transform(X_train)
+X_test = sc_X.transform(X_test)
+
+
+#K-Fold
+from sklearn.model_selection import KFold
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import confusion_matrix, accuracy_score
+k_fold = KFold(n_splits=10, shuffle=True, random_state=0)
+
+from sklearn.svm import SVC
+svc_sigmoid= SVC(kernel = 'sigmoid')
+svc_sigmoid.fit(X_train, y_train)
+svcpred = svc_sigmoid.predict(X_test)
+print(confusion_matrix(y_test, svcpred))
+print(round(accuracy_score(y_test, svcpred),2)*100)
+SVCCV = (cross_val_score(svc, X_train, y_train, cv=k_fold, n_jobs=1, scoring = 'accuracy').mean())
+
+#SVM
+from sklearn.svm import SVC
+from sklearn.metrics import mean_squared_error
+svc_rbf= SVC(kernel = 'rbf')
+svc_rbf.fit(X_train, y_train)
+svcpred = svc_rbf.predict(X_test)
+print(confusion_matrix(y_test, svcpred))
+print(round(accuracy_score(y_test, svcpred),2)*100)
+SVCCV = (cross_val_score(svc, X_train, y_train, cv=k_fold, n_jobs=1, scoring = 'accuracy').mean())
+
+#DecisionTree
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import confusion_matrix
+dtree = DecisionTreeClassifier(criterion='gini',max_depth=9) #criterion = entopy, gini
+dtree.fit(X_train, y_train)
+dtreepred = dtree.predict(X_test)
+
+print(confusion_matrix(y_test, dtreepred))
+print(round(accuracy_score(y_test, dtreepred),2)*100)
+DTREECV = (cross_val_score(dtree, X_train, y_train, cv=k_fold, n_jobs=1, scoring = 'accuracy').mean())
+
+#AdaBoost
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.preprocessing import LabelEncoder
+from sklearn.tree import DecisionTreeClassifier
+for label in bank.columns:
+    bank[label] = LabelEncoder().fit(bank[label]).transform(bank[label])
+    
+#X = dataset.drop(['target'],axis=1)
+#Y = dataset['target']
+model = DecisionTreeClassifier(criterion='entropy',max_depth=12)
+AdaBoost = AdaBoostClassifier(base_estimator= model,n_estimators=400,learning_rate=1)
+AdaBoost = AdaBoostClassifier(n_estimators=400,learning_rate=1,algorithm='SAMME')
+AdaBoost.fit(X_train,y_train)
+prediction = AdaBoost.score(X_train,y_train)
+AdaBoostpred=AdaBoost.predict(X_test)
+print(confusion_matrix(y_test, AdaBoostpred))
+print('The accuracy is: ',prediction*100,'%')
+
+#Logistics Regression 
+from sklearn.linear_model import LogisticRegression
+logmodel = LogisticRegression() 
+logmodel.fit(X_train,y_train)
+logpred = logmodel.predict(X_test)
+
+
+print(confusion_matrix(y_test, logpred))
+print(round(accuracy_score(y_test, logpred),2)*100)
+LOGCV = (cross_val_score(logmodel, X_train, y_train, cv=k_fold, n_jobs=1, scoring = 'accuracy').mean())
+
+#XGBoost
+from xgboost import XGBClassifier
+xgb = XGBClassifier()
+xgb.fit(X_train, y_train)
+xgbprd = xgb.predict(X_test)
+
+print(confusion_matrix(y_test, xgbprd ))
+print(round(accuracy_score(y_test, xgbprd),2)*100)
+XGB = (cross_val_score(estimator = xgb, X = X_train, y = y_train, cv = 10).mean())
+
+#Learning Curve
+
+#from yellowbrick.datasets import load_game
+from sklearn.model_selection import cross_validate
+from yellowbrick.model_selection import LearningCurve
+from sklearn.model_selection import StratifiedKFold
+
+# Create the learning curve visualizer
+cv = StratifiedKFold(n_splits=12)
+sizes = np.linspace(0.3, 1.0, 10)
+
+model = SVC(kernel ='sigmoid')
+visualizer = LearningCurve(
+    model, cv=cv, scoring='accuracy', train_sizes=sizes, n_jobs=2
+)
+
+visualizer.fit(X_train, y_train)        # Fit the data to the visualizer
+visualizer.show()           # Finalize and render the figure
+
+# Create the learning curve visualizer
+model = SVC(kernel ='rbf')
+visualizer = LearningCurve(
+    model, cv=cv, scoring='accuracy', train_sizes=sizes, n_jobs=4
+)
+
+visualizer.fit(X_train, y_train)        # Fit the data to the visualizer
+visualizer.show()           # Finalize and render the figure
+
+# Create the learning curve visualizer
+cv = StratifiedKFold(n_splits=12)
+sizes = np.linspace(0.3, 1.0, 10)
+model = DecisionTreeClassifier(criterion="entropy", max_depth=2)
+visualizer = LearningCurve(
+    model, cv=cv, scoring='accuracy',train_sizes=sizes, n_jobs=4)
+
+visualizer.fit(X_train, y_train)        # Fit the data to the visualizer
+visualizer.show()           # Finalize and render the figure
+
+# Create the learning curve visualizer
+cv = StratifiedKFold(n_splits=12)
+sizes = np.linspace(0.3, 1.0, 10)
+model = AdaBoost
+visualizer = LearningCurve(
+    model, cv=cv, scoring='accuracy',train_sizes=sizes, n_jobs=4)
+
+visualizer.fit(X_train, y_train)        # Fit the data to the visualizer
+visualizer.show()           # Finalize and render the figure
+
+from sklearn.model_selection import cross_val_score
+accuracies = cross_val_score(estimator = svc_sigmoid, X = X_train, y = y_train, cv = 5)
+accuracies.mean()
+#accuracies.std()
+
+from sklearn.model_selection import cross_val_score
+accuracies = cross_val_score(estimator = svc_rbf, X = X_train, y = y_train, cv = 5)
+accuracies.mean()
+#accuracies.std()
+
+from sklearn.model_selection import cross_val_score
+accuracies = cross_val_score(estimator = dtree, X = X_train, y = y_train, cv = 5)
+accuracies.mean()
+#accuracies.std()
+
+from sklearn.model_selection import cross_val_score
+accuracies = cross_val_score(estimator = AdaBoost, X = X_train, y = y_train, cv = 5)
+accuracies.mean()
+#accuracies.std()
+
